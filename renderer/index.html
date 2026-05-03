@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drader</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="titlebar-drag">
+      <span class="app-logo">&#9654;</span>
+      <span class="app-name">Drader</span>
+    </div>
+    <div class="titlebar-controls">
+      <button class="tb-btn" id="btn-minimize">&#8722;</button>
+      <button class="tb-btn" id="btn-maximize">&#9633;</button>
+      <button class="tb-btn tb-close" id="btn-close">&#10005;</button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-search-wrap">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="sidebar-search" id="search-input" placeholder="Search..." autocomplete="off" />
+        </div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" title="Close sidebar">&#10005;</button>
+      </div>
+      <div class="sidebar-label" id="sidebar-count">Games</div>
+      <ul class="sidebar-list" id="sidebar-list"></ul>
+      <button class="add-btn-sidebar" id="add-btn-sidebar">+ Add Game</button>
+    </aside>
+
+    <!-- ── Main ── -->
+    <main class="content">
+
+      <!-- Nav tabs (hidden in detail view) -->
+      <div class="main-nav" id="main-nav">
+        <button class="nav-tab active" data-view="library">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/></svg>
+          Library
+        </button>
+        <button class="nav-tab" data-view="stats">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Stats
+        </button>
+        <div class="nav-spacer"></div>
+        <button class="nav-icon-btn" id="sidebar-toggle-btn" title="Toggle sidebar (hide/show game list)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        </button>
+        <button class="nav-icon-btn" data-view="settings" id="settings-nav-btn" title="Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <!-- ════ LIBRARY VIEW ════ -->
+      <div id="view-library">
+        <div class="jump-section" id="jump-section" style="display:none">
+          <div class="jump-label">Jump back in</div>
+          <div class="jump-row" id="jump-row"></div>
+        </div>
+        <div class="lib-section">
+          <div class="lib-bar">
+            <div class="lib-bar-left">
+              <span class="lib-count" id="lib-count">All Games</span>
+            </div>
+            <div class="lib-bar-right">
+              <span class="sort-label">SORT BY</span>
+              <div class="sort-btns" id="sort-btns">
+                <button class="sort-btn active" data-sort="recent">Last Played</button>
+                <button class="sort-btn" data-sort="alpha">A–Z</button>
+                <button class="sort-btn" data-sort="genre">Genre</button>
+                <button class="sort-btn" data-sort="playtime">Playtime</button>
+              </div>
+              <div class="search-wrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="search-input" id="grid-search" placeholder="Filter..." autocomplete="off" />
+                <button class="search-clear" id="search-clear">&#10005;</button>
+              </div>
+              <div class="view-toggle" id="view-toggle">
+                <button class="view-btn active" data-mode="grid" title="Grid view">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+                <button class="view-btn" data-mode="list" title="List view">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </button>
+              </div>
+              <button class="add-btn" id="add-btn">+ Add Game</button>
+            </div>
+          </div>
+          <div class="lib-filter-row">
+            <div class="status-filters" id="status-filters"></div>
+          </div>
+          <div class="game-grid" id="game-grid">
+            <div class="empty-state" id="empty-state">
+              <div class="empty-icon">&#9654;</div>
+              <p>No games yet.<br/>Click <strong>+ Add Game</strong> to start.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ STATS VIEW ════ -->
+      <div id="view-stats" class="hidden">
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-icon-wrap accent">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-total-time">—</div>
+              <div class="stat-label">Total Play Time</div>
+              <div class="stat-sub" id="stat-week-time"></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap purple">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M8 12h.01"/><circle cx="17" cy="12" r="1" fill="currentColor"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-games">0</div>
+              <div class="stat-label">Games in Library</div>
+              <div class="stat-sub" id="stat-played-count"></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap gold">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-longest">—</div>
+              <div class="stat-label">Longest Session</div>
+              <div class="stat-sub" id="stat-longest-date"></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-sessions">0</div>
+              <div class="stat-label">Total Sessions</div>
+              <div class="stat-sub" id="stat-streak"></div>
+            </div>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stats-card chart-card">
+            <div class="stats-card-title">Playtime Over Time <span class="stats-card-badge">Last 14 days</span></div>
+            <div class="chart-area">
+              <div class="chart-svg-wrap" id="chart-svg-wrap"></div>
+              <div class="chart-labels-x" id="chart-labels-x"></div>
+            </div>
+          </div>
+          <div class="stats-card top-games-card">
+            <div class="stats-card-title">Top Games</div>
+            <div id="top-games-list"></div>
+          </div>
+        </div>
+        <div class="stats-row stats-row-bot">
+          <div class="stats-card genre-card">
+            <div class="stats-card-title">Genres</div>
+            <div class="donut-wrap">
+              <div id="donut-svg"></div>
+              <div class="genre-legend" id="genre-legend"></div>
+            </div>
+          </div>
+          <div class="stats-card recent-played-card">
+            <div class="stats-card-title">Recently Played</div>
+            <div id="stats-recent-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ SETTINGS VIEW ════ -->
+      <div id="view-settings" class="hidden">
+        <div class="settings-layout">
+          <!-- Settings sidebar -->
+          <nav class="settings-sidebar">
+            <div class="settings-sidebar-title">Settings</div>
+            <button class="ss-item active" data-section="appearance">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+              Appearance
+            </button>
+            <button class="ss-item" data-section="library">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/></svg>
+              Library
+            </button>
+            <button class="ss-item" data-section="statuses">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Statuses
+            </button>
+            <button class="ss-item" data-section="general">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              General
+            </button>
+            <button class="ss-item" data-section="data">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              Data
+            </button>
+            <button class="ss-item" data-section="about">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              About
+            </button>
+          </nav>
+          <!-- Settings content -->
+          <div class="settings-content" id="settings-content"></div>
+        </div>
+      </div>
+
+      <!-- ════ DETAIL VIEW ════ -->
+      <div id="view-detail" class="hidden">
+        <div class="detail-bg-blur" id="detail-bg-blur"></div>
+        <div class="game-banner" id="game-banner">
+          <img class="banner-img" id="banner-img" src="" alt="" />
+          <div class="banner-gradient"></div>
+          <button class="back-btn" id="back-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Library
+          </button>
+        </div>
+        <div class="play-bar">
+          <div class="play-btn-wrap">
+            <button class="play-btn" id="play-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span id="play-btn-label">Play</span>
+            </button>
+            <div class="running-badge hidden" id="running-badge">
+              <span class="running-dot"></span>Running
+            </div>
+          </div>
+          <div class="play-bar-stats">
+            <div class="pb-stat"><div class="pb-label">LAST PLAYED</div><div class="pb-value" id="pb-last">—</div></div>
+            <div class="pb-divider"></div>
+            <div class="pb-stat"><div class="pb-label">TIME PLAYED</div><div class="pb-value" id="pb-time">—</div></div>
+            <div class="pb-divider"></div>
+            <div class="pb-stat"><div class="pb-label">SESSIONS</div><div class="pb-value" id="pb-sessions">0</div></div>
+          </div>
+          <div class="play-bar-actions">
+            <div class="status-wrap" id="status-wrap">
+              <button class="status-select-btn" id="status-select-btn">
+                <span id="status-select-label">Set Status</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="status-drop-menu hidden" id="status-drop-menu"></div>
+            </div>
+            <button class="pb-icon-btn fav-btn" id="btn-favorite" title="Toggle Favorite">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
+            <button class="pb-icon-btn" id="btn-edit" title="Edit Game">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="pb-icon-btn" id="btn-screenshot" title="Take Screenshot (F12)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="14" rx="2"/><circle cx="12" cy="13" r="3"/><path d="M8 6l1.5-2.5h5L16 6"/></svg>
+            </button>
+            <button class="pb-icon-btn danger" id="remove-detail-btn" title="Remove from Library">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="detail-body" id="detail-body">
+          <div class="detail-left" id="detail-left">
+            <div class="detail-game-card">
+              <img class="detail-cover" id="detail-cover" src="" alt="" />
+              <div class="detail-cover-ph hidden" id="detail-cover-ph">&#9654;</div>
+              <div class="detail-game-info">
+                <div class="detail-genre-row" id="detail-genre-row"></div>
+                <h2 class="detail-title" id="detail-title"></h2>
+                <div class="rating-stars" id="detail-rating"></div>
+                <div class="detail-tags-row" id="detail-tags-row"></div>
+              </div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">Play History <span class="stats-card-badge">Last 30 days</span></div>
+              <div id="game-chart-wrap" class="game-chart-wrap"></div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">Recent Activity</div>
+              <div id="activity-list" class="activity-list"></div>
+            </div>
+          </div>
+          <div class="detail-resizer" id="detail-resizer"></div>
+          <div class="detail-right" id="detail-right">
+            <div class="detail-section" id="goals-section">
+              <div class="detail-section-title">Goals
+                <button class="add-goal-btn" id="add-goal-btn" title="Add goal">+</button>
+              </div>
+              <div id="goals-list" class="goals-list"></div>
+              <div class="add-goal-row hidden" id="add-goal-row">
+                <input type="text" class="goal-input" id="new-goal-input" placeholder="Enter goal..." maxlength="80"/>
+                <button class="goal-save-btn" id="goal-save-btn">Add</button>
+              </div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">Notes <span class="shortcut-badge">Ctrl+N</span></div>
+              <textarea class="notes-area" id="notes-area" placeholder="Write something about this game...&#10;Press Ctrl+N to focus."></textarea>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">Screenshots <span class="shortcut-badge">F12</span></div>
+              <div class="screenshots-grid" id="screenshots-grid">
+                <div class="screenshots-empty">No screenshots yet.<br/>Press <strong>F12</strong> while in-game.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Add / Edit Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title">Add Game</span>
+        <button class="modal-close" id="modal-close">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id" value="" />
+        <label class="form-label">Game Name</label>
+        <input type="text" class="form-input" id="input-name" placeholder="e.g. Cyberpunk 2077" />
+        <label class="form-label">Genre <span class="optional">(pick one or more)</span></label>
+        <div class="genre-picker" id="genre-picker"></div>
+        <label class="form-label">Executable (.exe)</label>
+        <div class="file-row">
+          <input type="text" class="form-input file-input" id="input-exe" placeholder="Path to .exe" readonly />
+          <button class="browse-btn" id="browse-exe">Browse</button>
+        </div>
+        <label class="form-label">Cover Image <span class="optional">(optional — or drag &amp; drop)</span></label>
+        <div class="file-row drop-zone" id="cover-drop-zone">
+          <input type="text" class="form-input file-input" id="input-image" placeholder="Path to image or drag image here" readonly />
+          <button class="browse-btn" id="browse-image">Browse</button>
+        </div>
+        <label class="form-label">Tags <span class="optional">(comma-separated)</span></label>
+        <input type="text" class="form-input" id="input-tags" placeholder="e.g. Co-op, VR, Replay" autocomplete="off" />
+        <label class="form-label">Extra Executables <span class="optional">(optional — launcher alternatives)</span></label>
+        <div id="extra-exe-list"></div>
+        <button class="browse-btn" id="add-extra-exe" style="margin-top:2px;width:100%">+ Add Alternate EXE</button>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" id="cancel-btn">Cancel</button>
+        <button class="ok-btn" id="ok-btn">Add Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="modal-overlay" id="confirm-overlay">
+    <div class="modal confirm-modal">
+      <div class="confirm-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </div>
+      <div class="confirm-title" id="confirm-title">Are you sure?</div>
+      <div class="confirm-msg" id="confirm-msg"></div>
+      <div class="confirm-actions">
+        <button class="cancel-btn" id="confirm-cancel">Cancel</button>
+        <button class="danger-btn" id="confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan Folder Modal -->
+  <div class="modal-overlay" id="scan-overlay">
+    <div class="modal scan-modal">
+      <div class="modal-header">
+        <span>Found Games</span>
+        <button class="modal-close" id="scan-close">&#10005;</button>
+      </div>
+      <div class="modal-body scan-body">
+        <div class="scan-hint" id="scan-hint"></div>
+        <div id="scan-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" id="scan-cancel">Cancel</button>
+        <button class="ok-btn" id="scan-add">Add Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cover Image Scan Modal -->
+  <div class="modal-overlay" id="cover-scan-overlay">
+    <div class="modal scan-modal cover-scan-modal">
+      <div class="modal-header">
+        <span>Assign Cover Images</span>
+        <button class="modal-close" id="cover-scan-close">&#10005;</button>
+      </div>
+      <div class="modal-body scan-body" style="padding:0">
+        <div class="cover-scan-hint" id="cover-scan-hint"></div>
+        <div id="cover-scan-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" id="cover-scan-cancel">Cancel</button>
+        <button class="ok-btn" id="cover-scan-apply">Apply Covers</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screenshot Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close">&#10005;</button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev">&#8249;</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+    <button class="lightbox-nav lightbox-next" id="lightbox-next">&#8250;</button>
+    <div class="lightbox-counter" id="lightbox-counter"></div>
+  </div>
+
+  <!-- Launch overlay -->
+  <div class="launch-overlay" id="launch-overlay">
+    <div class="launch-anim">
+      <div class="spinner"></div>
+      <div class="launch-name" id="launch-name"></div>
+      <div class="launch-text">Launching...</div>
+    </div>
+  </div>
+
+  <!-- Card hover preview -->
+  <div class="card-preview" id="card-preview">
+    <div class="cp-cover-wrap"><img class="cp-cover" id="cp-cover" src="" alt=""/><div class="cp-cover-ph hidden" id="cp-cover-ph">▶</div></div>
+    <div class="cp-body">
+      <div class="cp-name" id="cp-name"></div>
+      <div class="cp-rating" id="cp-rating"></div>
+      <div class="cp-time" id="cp-time"></div>
+      <div class="cp-status" id="cp-status"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

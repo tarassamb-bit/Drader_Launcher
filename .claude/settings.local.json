@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\renderer\\\\app.js\")",
+      "Bash(node --check \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\main.js\")",
+      "Bash(node --check \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\preload.js\")",
+      "Bash(node -e ' *)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\*.png\" \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\*.ico\")",
+      "Bash(findstr /v node_modules)",
+      "Bash(findstr /v dist)",
+      "Bash(npm run *)",
+      "Bash(ping -n 8 127.0.0.1)",
+      "Bash(dir \"%APPDATA%\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\")",
+      "Bash(findstr /i drader)",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\dist\\\\Drader Setup 1.0.0.exe\")",
+      "PowerShell(Get-Process drader -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\\\\drader\" -Recurse -Filter \"app.js\" | Select-Object FullName)",
+      "PowerShell(Get-Process | Where-Object {$_.MainWindowTitle -ne \"\" } | Select-Object Name, Id, Path, MainWindowTitle | Where-Object {$_.MainWindowTitle -match \"Drader\"})",
+      "Bash(Get-Process -Name \"Drader\" -ErrorAction SilentlyContinue)",
+      "Bash(Stop-Process -Force)",
+      "Bash(Start-Sleep -Milliseconds 500)",
+      "Bash(Copy-Item \"C:\\\\Users\\\\Taras\\\\Desktop\\\\Extention\\\\dist\\\\win-unpacked\\\\resources\\\\app.asar\" \"C:\\\\Users\\\\Taras\\\\AppData\\\\Local\\\\Programs\\\\drader\\\\resources\\\\app.asar\" -Force)",
+      "Bash(Write-Host \"Done\")",
+      "Bash(taskkill /F /IM electron.exe)",
+      "Bash(taskkill /F /IM Drader.exe)",
+      "Bash(where git *)",
+      "Bash(where gh *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(echo \"node_modules/\")",
+      "Bash(echo \"dist/\")",
+      "Bash(echo \".DS_Store\")",
+      "Bash(echo \"*.log\")",
+      "Bash(git add *)"
+    ]
+  }
+}
