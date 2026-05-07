@@ -443,13 +443,58 @@ notesArea.addEventListener('input', () => {
 });
 
 // ── Screenshot button ─────────────────────────────────
-document.getElementById('btn-screenshot').addEventListener('click', async () => {
-  if (!currentDetailId) return;
-  showToast('Taking screenshot...');
-  const result = await window.api.takeScreenshot(currentDetailId);
-  if (result.success) { showToast('Screenshot saved!','success'); loadScreenshots(currentDetailId); }
-  else showToast('Screenshot failed: '+result.error);
+let lastScanResults = [];
+
+document.getElementById('btn-scan-pc').addEventListener('click', async () => {
+  showToast('Scanning PC for games...');
+  const results = await window.api.scanSystem();
+  if (results && results.length > 0) {
+    lastScanResults = results;
+    showToast(`Found ${results.length} games!`,'success');
+    displayScanResults(results);
+  } else {
+    showToast('No new games found');
+  }
 });
+
+function displayScanResults(results) {
+  const overlay = document.createElement('div');
+  overlay.id = 'scan-overlay';
+  overlay.className = 'scan-overlay';
+  overlay.innerHTML = `
+    <div class="scan-modal">
+      <div class="scan-header">
+        <h3>Found ${results.length} Game(s)</h3>
+        <button class="scan-close" onclick="document.getElementById('scan-overlay').remove()">✕</button>
+      </div>
+      <div class="scan-list">
+        ${results.map((r, i) => `
+          <div class="scan-item">
+            <div class="scan-info">
+              <div class="scan-name">${escHtml(r.name)}</div>
+              <div class="scan-path">${escHtml(r.path)}</div>
+            </div>
+            <button class="scan-btn" onclick="addScannedGame(${i})">Add</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function addScannedGame(index) {
+  const result = lastScanResults[index];
+  if (!result) return;
+  window.api.addGame({
+    name: result.name,
+    exePath: result.path,
+  }).then(() => {
+    showToast(`Added ${result.name}!`, 'success');
+    document.getElementById('scan-overlay')?.remove();
+    loadGames();
+  });
+}
 
 // ── Drag-and-drop cover image ─────────────────────────
 const dropZone = document.getElementById('cover-drop-zone');

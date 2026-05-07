@@ -242,6 +242,52 @@ ipcMain.handle('scan-images', async () => {
   return results;
 });
 
+// ── Scan System for Games ─────────────────────────────
+ipcMain.handle('scan-system', async () => {
+  const results = [];
+  const checked = new Set();
+
+  const scanDir = (dir, depth) => {
+    if (depth > 2 || results.length >= 100) return;
+    if (checked.has(dir.toLowerCase())) return;
+    checked.add(dir.toLowerCase());
+
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (results.length >= 100) return;
+        if (entry.isDirectory() && !entry.name.startsWith('.')) {
+          const fullPath = path.join(dir, entry.name);
+          scanDir(fullPath, depth + 1);
+        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.exe')) {
+          const lower = entry.name.toLowerCase();
+          if (SKIP_WORDS.some(w => lower.includes(w))) continue;
+          const fullPath = path.join(dir, entry.name);
+          const existing = results.find(r => r.path.toLowerCase() === fullPath.toLowerCase());
+          if (!existing) {
+            results.push({ name: path.basename(entry.name, '.exe'), path: fullPath });
+          }
+        }
+      }
+    } catch {}
+  };
+
+  const searchPaths = [
+    'C:\\Program Files',
+    'C:\\Program Files (x86)',
+    path.join(process.env.LOCALAPPDATA || '', 'Programs'),
+    'C:\\Games',
+    path.join(process.env.USERPROFILE || '', 'Games'),
+    path.join(process.env.USERPROFILE || '', 'AppData\\Local\\Epic Games'),
+  ].filter(p => fs.existsSync(p));
+
+  for (const dir of searchPaths) {
+    scanDir(dir, 0);
+  }
+
+  return results.slice(0, 100);
+});
+
 // ── File dialogs ───────────────────────────────────────
 ipcMain.handle('open-exe-dialog', async () => {
   const r = await dialog.showOpenDialog({ title: 'Select game executable', filters: [{ name: 'Executables', extensions: ['exe'] }], properties: ['openFile'] });
