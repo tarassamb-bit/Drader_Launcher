@@ -23,13 +23,21 @@ const runningGames = new Map(); // id → startTime
 async function captureScreen(gameId) {
   try {
     const primary = screen.getPrimaryDisplay();
-    const { width, height } = primary.size;
+    let { width, height } = primary.size;
+    width = Math.min(width, 1280);
+    height = Math.min(height, 720);
     const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width, height } });
     if (!sources.length) return null;
     const dir = path.join(app.getPath('userData'), 'screenshots', gameId);
     fs.mkdirSync(dir, { recursive: true });
     const filepath = path.join(dir, `shot_${Date.now()}.png`);
     fs.writeFileSync(filepath, sources[0].thumbnail.toPNG());
+    const files = fs.readdirSync(dir).sort((a, b) => b.localeCompare(a));
+    if (files.length > 20) {
+      for (let i = 20; i < files.length; i++) {
+        fs.unlinkSync(path.join(dir, files[i]));
+      }
+    }
     return filepath;
   } catch { return null; }
 }
@@ -37,15 +45,18 @@ async function captureScreen(gameId) {
 // ── Window ─────────────────────────────────────────────
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1280, height: 820, minWidth: 900, minHeight: 600,
+    width: 1000, height: 700, minWidth: 800, minHeight: 500,
     backgroundColor: '#0d0d12', frame: false, titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      v8CodeCaching: true,
+      enableRemoteModule: false,
     },
   });
   mainWin = win;
+  win.webPreferences.nodeIntegration = false;
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   ipcMain.handle('window-minimize', () => win.minimize());
