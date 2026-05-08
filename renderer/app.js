@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   defaultView:     'grid',
   launchSound:     true,
   confirmRemove:   true,
+  reduceAnimations: false,
   statuses: [
     { id: 'playing',   label: 'Playing',   color: '#22c55e', enabled: false, builtIn: true },
     { id: 'completed', label: 'Completed', color: '#5b9cf6', enabled: true,  builtIn: true },
@@ -116,6 +117,7 @@ const lightboxImg   = document.getElementById('lightbox-img');
 function applySettings() {
   applyAccent(settings.accentColor);
   applyCardSize(settings.cardSize);
+  applyAnimationSetting(settings.reduceAnimations);
   // Initialise sort/view buttons
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sortMode));
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === viewMode));
@@ -139,6 +141,11 @@ function applyCardSize(size) {
   document.documentElement.style.setProperty('--card-w', s.w);
   document.documentElement.style.setProperty('--card-cover-h', s.h);
   settings.cardSize = size;
+}
+
+function applyAnimationSetting(reduce) {
+  document.documentElement.classList.toggle('reduce-animations', reduce);
+  settings.reduceAnimations = reduce;
 }
 
 // ── Status helpers ────────────────────────────────────
@@ -445,17 +452,6 @@ notesArea.addEventListener('input', () => {
 // ── Screenshot button ─────────────────────────────────
 let lastScanResults = [];
 
-document.getElementById('btn-scan-pc').addEventListener('click', async () => {
-  showToast('Scanning PC for games...');
-  const results = await window.api.scanSystem();
-  if (results && results.length > 0) {
-    lastScanResults = results;
-    showToast(`Found ${results.length} games!`,'success');
-    displayScanResults(results);
-  } else {
-    showToast('No new games found');
-  }
-});
 
 function displayScanResults(results) {
   const overlay = document.createElement('div');
@@ -729,10 +725,12 @@ statusSelectBtn.addEventListener('click', e => {
 });
 document.addEventListener('click', () => statusDropMenu.classList.add('hidden'));
 statusDropMenu.addEventListener('click', async e => {
+  e.stopPropagation();
   const item = e.target.closest('.sdm-item');
   if (!item || !currentDetailId) return;
   const status = item.dataset.status || null;
   games = await window.api.updateGame(currentDetailId, 'status', status);
+  statusDropMenu.classList.add('hidden');
   const g = games.find(x => x.id === currentDetailId);
   if (g) updateStatusBtn(g);
   renderGrid(); renderSidebar();
@@ -1493,6 +1491,10 @@ function renderStats() {
   renderTopGames();
   renderGenreChart();
   renderStatsRecent();
+  renderSessionFrequency();
+  renderStatusBreakdown();
+  renderAvgPlaytime();
+  renderMonthlyChart();
 }
 
 function renderPlaytimeChart() {
@@ -1589,6 +1591,80 @@ function renderStatsRecent() {
     </div>`;
   }).join('');
   el.querySelectorAll('.stats-recent-item').forEach(item=>item.addEventListener('click',()=>showDetail(item.dataset.id)));
+}
+
+function renderSessionFrequency() {
+  const el=document.getElementById('session-frequency-wrap');
+  if(!el) return;
+  const today=new Date().toISOString().slice(0,10),sevenDaysAgo=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const dayKeys=[],dayVals={};
+  for(let i=6;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000),k=d.toISOString().slice(0,10);
+    dayKeys.push({key:k,label:d.toLocaleDateString([],{weekday:'short'})});
+    dayVals[k]=0;
+  }
+  games.forEach(g=>(g.sessions||[]).forEach(s=>{
+    const startDate=s.startedAt.slice(0,10);
+    if(dayVals.hasOwnProperty(startDate))dayVals[startDate]++;
+  }));
+  const maxVal=Math.max(...dayKeys.map(d=>dayVals[d.key]||0),1);
+  const W=200,H=100,P=8,CW=W-2*P,CH=H-2*P,barW=CW/dayKeys.length,barGap=3;
+  const bars=dayKeys.map((d,i)=>{
+    const val=dayVals[d.key]||0,barH=val>0?(CH/maxVal*val):0;
+    return `<rect x="${P+i*(barW-2)}" y="${P+CH-barH}" width="${barW-barGap}" height="${barH}" fill="#3b82f6" rx="2"/>`;
+  }).join('');
+  const labels=dayKeys.map((d,i)=>`<text x="${P+i*(barW-2)+barW/2-6}" y="${H-2}" font-size="10" fill="#9ca3af">${d.label[0]}</text>`).join('');
+  el.innerHTML=`<svg width="${W}" height="${H}" style="display:block;margin:0 auto">${bars}${labels}</svg>`;
+}
+
+function renderStatusBreakdown() {
+  const el=document.getElementById('status-breakdown-wrap'); if(!el) return;
+  const counts={all:0,playing:0,completed:0,backlog:0,dropped:0};
+  games.forEach(g=>{counts.all++;counts[g.status||'backlog']++;});
+  const statuses=[{id:'playing',color:'#22c55e'},{id:'completed',color:'#5b9cf6'},{id:'backlog',color:'#f59e0b'},{id:'dropped',color:'#ef4444'}];
+  const R=45,CX=60,CY=60,SW=18,C=2*Math.PI*R;
+  let off=0;
+  const slices=statuses.map(s=>{
+    const cnt=counts[s.id]||0;
+    const dash=cnt>0?(cnt/counts.all)*C:0;
+    const slice=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${s.color}" stroke-width="${SW}" stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})"/>`;
+    off+=dash; return slice;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;gap:16px;align-items:center">
+    <svg viewBox="0 0 120 120" style="width:100px;height:100px;flex-shrink:0">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg4)" stroke-width="${SW}"/>
+      ${slices}
+    </svg>
+    <div style="display:grid;gap:6px;font-size:12px">
+      ${statuses.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="display:block;width:8px;height:8px;background:${s.color};border-radius:2px"></span><span>${s.id.charAt(0).toUpperCase()+s.id.slice(1)}: <strong>${counts[s.id]||0}</strong></span></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderAvgPlaytime() {
+  const el=document.getElementById('avg-playtime-list'); if(!el) return;
+  const played=games.filter(g=>(g.sessions||[]).length>0).map(g=>({name:g.name,avg:(g.totalPlaytime||0)/(g.sessions||[]).length})).sort((a,b)=>b.avg-a.avg).slice(0,5);
+  if(!played.length){el.innerHTML='<div style="color:var(--muted);font-size:12px">No data</div>';return;}
+  el.innerHTML=played.map(g=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${escHtml(g.name)}</span><span style="color:var(--accent)">${formatPlaytimeLong(Math.round(g.avg))}</span></div>`).join('');
+}
+
+function renderMonthlyChart() {
+  const el=document.getElementById('monthly-chart-wrap'); if(!el) return;
+  const now=Date.now(), months={}, monthLabels=[];
+  for(let i=5;i>=0;i--){const d=new Date(now-i*30*86400000);const m=d.toISOString().slice(0,7);months[m]=0;monthLabels.push({m,label:d.toLocaleDateString([],{month:'short'})});}
+  games.forEach(g=>(g.sessions||[]).forEach(s=>{const m=s.startedAt.slice(0,7);if(months[m]!==undefined)months[m]+=s.duration;}));
+  const vals=monthLabels.map(x=>months[x.m]/3600), maxV=Math.max(...vals,.5);
+  const W=520,H=120,PL=8,PR=8,PT=10,PB=20,cW=W-PL-PR,cH=H-PT-PB;
+  const barW=(cW-10)/monthLabels.length, barGap=10/monthLabels.length;
+  const bars=vals.map((v,i)=>{
+    const h=(v/maxV)*cH, x=PL+i*(barW+barGap), y=PT+cH-h;
+    return `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--accent)" rx="2" opacity="0.9"/>`;
+  }).join('');
+  const labels=monthLabels.map((x,i)=>{
+    const x_pos=PL+i*(barW+barGap)+barW/2;
+    return `<text x="${x_pos}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--dim)">${x.label}</text>`;
+  }).join('');
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${bars}${labels}</svg>`;
 }
 
 // ══ SETTINGS ═════════════════════════════════════════
@@ -1813,6 +1889,11 @@ function buildGeneralSection() {
       ${buildToggleRow('launchSound',    'Play sound on launch',         'A short sound plays when you launch a game.', settings.launchSound)}
       ${buildToggleRow('confirmRemove',  'Confirm before removing games', 'Show a confirmation dialog before deleting a game from your library.', settings.confirmRemove)}
     </div>
+
+    <div class="sg">
+      <div class="sg-title">Performance</div>
+      ${buildToggleRow('reduceAnimations', 'Reduce animations', 'Disable animations and transitions for better performance on low-end machines.', settings.reduceAnimations)}
+    </div>
   `;
 }
 
@@ -1878,43 +1959,75 @@ function buildAboutSection() {
   const totalTime  = games.reduce((s,g)=>s+(g.totalPlaytime||0),0);
   const totalSess  = games.reduce((s,g)=>s+(g.sessions||[]).length,0);
   const favCount   = games.filter(g=>g.favorite).length;
+  const streak     = calcStreak();
+  const played     = games.filter(g=>g.playCount>0).length;
+  const topGame    = games.length > 0 ? games.reduce((a,b)=>(b.totalPlaytime||0)>(a.totalPlaytime||0)?b:a) : null;
+
   return `
-    <div class="sc-header">
-      <div class="sc-title">About</div>
-    </div>
+    <div class="about-container">
+      <div class="about-header-premium">
+        <div class="about-logo-big">▶</div>
+        <h1>Drader</h1>
+        <p>Game Library Manager</p>
+        <span class="about-version">v1.0.0</span>
+      </div>
 
-    <div class="about-logo" style="margin-bottom:24px">
-      <div class="about-logo-icon">&#9654;</div>
-      <div>
-        <div class="about-logo-name">Drader</div>
-        <div class="about-logo-ver">Version 1.0.0 &nbsp;·&nbsp; Built with Electron</div>
+      <div class="about-stats-grid">
+        <div class="stat-item stat-item-primary">
+          <div class="stat-num">${games.length}</div>
+          <div class="stat-name">Games</div>
+          <div class="stat-bar" style="width:${Math.min(games.length*5,100)}%"></div>
+        </div>
+        <div class="stat-item stat-item-success">
+          <div class="stat-num">${formatPlaytimeLong(totalTime)}</div>
+          <div class="stat-name">Total Playtime</div>
+          <div class="stat-bar" style="width:${Math.min(totalTime/3600,100)}%"></div>
+        </div>
+        <div class="stat-item stat-item-info">
+          <div class="stat-num">${totalSess}</div>
+          <div class="stat-name">Sessions</div>
+          <div class="stat-bar" style="width:${Math.min(totalSess*2,100)}%"></div>
+        </div>
+        <div class="stat-item stat-item-gold">
+          <div class="stat-num">${played}</div>
+          <div class="stat-name">Games Played</div>
+          <div class="stat-bar" style="width:${Math.min(played*10,100)}%"></div>
+        </div>
+        <div class="stat-item stat-item-accent">
+          <div class="stat-num">⭐ ${favCount}</div>
+          <div class="stat-name">Favorites</div>
+          <div class="stat-bar" style="width:${Math.min(favCount*10,100)}%"></div>
+        </div>
+        <div class="stat-item stat-item-fire">
+          <div class="stat-num">${streak>0?'🔥'+streak:'-'}</div>
+          <div class="stat-name">${streak>0?'Day Streak':'Keep Playing'}</div>
+          <div class="stat-bar" style="width:${Math.min(streak*10,100)}%"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="about-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:18px">
-      <div class="about-card">
-        <div class="about-card-label">Games</div>
-        <div class="about-card-val">${games.length}</div>
+      ${topGame ? `
+        <div class="about-highlight">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Most Played Game</div>
+          <div style="font-size:18px;font-weight:600;color:var(--accent)">${escHtml(topGame.name)}</div>
+          <div style="font-size:13px;color:var(--dim);margin-top:4px">${formatPlaytimeLong(topGame.totalPlaytime||0)} played</div>
+        </div>
+      ` : ''}
+
+      <div class="about-features">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Features</div>
+        <div style="display:grid;gap:8px">
+          <div class="feature-tag">📊 Advanced Statistics</div>
+          <div class="feature-tag">🎮 Game Library Management</div>
+          <div class="feature-tag">📸 Screenshot Capture</div>
+          <div class="feature-tag">🔍 PC Game Discovery</div>
+          <div class="feature-tag">⚙️ Customizable Statuses</div>
+          <div class="feature-tag">🎨 Dark Theme Optimized</div>
+        </div>
       </div>
-      <div class="about-card">
-        <div class="about-card-label">Total Playtime</div>
-        <div class="about-card-val">${totalTime>0 ? formatPlaytimeLong(totalTime) : '0h'}</div>
-      </div>
-      <div class="about-card">
-        <div class="about-card-label">Sessions</div>
-        <div class="about-card-val">${totalSess}</div>
-      </div>
-      <div class="about-card">
-        <div class="about-card-label">Favorites</div>
-        <div class="about-card-val">${favCount}</div>
-      </div>
-      <div class="about-card">
-        <div class="about-card-label">Streak</div>
-        <div class="about-card-val">${calcStreak() > 0 ? calcStreak()+' days' : '—'}</div>
-      </div>
-      <div class="about-card">
-        <div class="about-card-label">Statuses</div>
-        <div class="about-card-val">${settings.statuses.filter(s=>s.enabled).length} active</div>
+
+      <div class="about-footer">
+        <p style="font-size:12px;color:var(--dim);margin:12px 0">Built with Electron & Vanilla JavaScript</p>
+        <p style="font-size:11px;color:var(--muted)">Optimized for gaming performance</p>
       </div>
     </div>
   `;
@@ -1928,6 +2041,9 @@ function bindSettingsSectionEvents(section) {
   content.querySelectorAll('.settings-toggle').forEach(input => {
     input.addEventListener('change', () => {
       settings[input.dataset.key] = input.checked;
+      if (input.dataset.key === 'reduceAnimations') {
+        applyAnimationSetting(input.checked);
+      }
       saveSettings();
       renderGames(); // re-render to reflect display changes
     });

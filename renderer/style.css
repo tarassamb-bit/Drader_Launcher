@@ -34,6 +34,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
   overflow: hidden; user-select: none; }
 .hidden { display: none !important; }
 
+/* ── Performance: Reduce animations ──────── */
+html.reduce-animations * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 /* ── Titlebar ─────────────────────────── */
 .titlebar { height: 38px; background: var(--bg2); display: flex;
   align-items: center; justify-content: space-between;
@@ -367,6 +374,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .stats-recent-item { display: flex; align-items: center; gap: 12px; padding: 8px 8px;
   border-radius: 8px; cursor: pointer; transition: background .12s;
   border-bottom: 1px solid var(--border); }
+
+/* ── New stats cards ────────────────────────────── */
+#session-frequency-wrap { min-height: 150px; }
+#status-breakdown-wrap { min-height: 150px; }
+#avg-playtime-list { min-height: 120px; }
+#monthly-chart-wrap { min-height: 150px; }
+.stats-row .stats-card:not(.chart-card):not(.top-games-card):not(.genre-card):not(.recent-played-card) { flex: 1; }
 .stats-recent-item:last-child { border-bottom: none; }
 .stats-recent-item:hover { background: var(--bg3); }
 .stats-recent-cover { width: 40px; height: 40px; border-radius: 7px; overflow: hidden;
@@ -783,6 +797,58 @@ option { background: var(--bg2); }
 .about-card-label { font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
   text-transform: uppercase; color: var(--dim); margin-bottom: 5px; }
 .about-card-val { font-size: 14px; font-weight: 600; }
+
+.about-container { padding: 0; }
+.about-header-premium {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+  padding: 40px 28px; text-align: center; margin: -12px -12px 24px -12px;
+  color: #fff; border-radius: 12px;
+}
+.about-logo-big { font-size: 48px; margin-bottom: 12px; opacity: 0.95; }
+.about-header-premium h1 { font-size: 32px; font-weight: 900; margin-bottom: 4px; }
+.about-header-premium p { font-size: 13px; opacity: 0.9; margin-bottom: 12px; }
+.about-version { display: inline-block; background: rgba(255,255,255,.2); padding: 4px 12px;
+  border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+.about-stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px;
+}
+.stat-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  position: relative; overflow: hidden;
+}
+.stat-item::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.stat-item-primary::before { background: var(--accent); }
+.stat-item-success::before { background: var(--green); }
+.stat-item-info::before { background: var(--purple); }
+.stat-item-gold::before { background: var(--gold); }
+.stat-item-accent::before { background: var(--accent); }
+.stat-item-fire::before { background: var(--danger); }
+
+.stat-num { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
+.stat-name { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.stat-bar { height: 4px; background: var(--bg3); border-radius: 2px; transition: width 0.3s; }
+
+.about-highlight {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+  margin-bottom: 20px; border-left: 4px solid var(--accent);
+}
+
+.about-features {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+  margin-bottom: 20px;
+}
+.feature-tag {
+  display: inline-block; background: var(--bg3); color: var(--text); padding: 6px 12px;
+  border-radius: 20px; font-size: 12px; margin: 0 6px 6px 0;
+  border: 1px solid var(--border);
+}
+
+.about-footer {
+  text-align: center; padding-top: 20px; border-top: 1px solid var(--border);
+}
 
 /* ── Color input in status editor ─── */
 .hidden-color-input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
