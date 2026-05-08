@@ -732,7 +732,10 @@ statusDropMenu.addEventListener('click', async e => {
   games = await window.api.updateGame(currentDetailId, 'status', status);
   statusDropMenu.classList.add('hidden');
   const g = games.find(x => x.id === currentDetailId);
-  if (g) updateStatusBtn(g);
+  if (g) {
+    updateStatusBtn(g);
+    showDetail(currentDetailId);
+  }
   renderGrid(); renderSidebar();
 });
 
