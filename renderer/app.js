@@ -25,12 +25,6 @@ const DEFAULT_SETTINGS = {
   launchSound:     true,
   confirmRemove:   true,
   reduceAnimations: false,
-  statuses: [
-    { id: 'playing',   label: 'Playing',   color: '#22c55e', enabled: false, builtIn: true },
-    { id: 'completed', label: 'Completed', color: '#5b9cf6', enabled: true,  builtIn: true },
-    { id: 'backlog',   label: 'Backlog',   color: '#f59e0b', enabled: true,  builtIn: true },
-    { id: 'dropped',   label: 'Dropped',   color: '#ef4444', enabled: true,  builtIn: true },
-  ],
 };
 
 // ── Settings load / save ──────────────────────────────
@@ -39,28 +33,12 @@ function loadSettings() {
     const raw = localStorage.getItem('draderSettings');
     if (!raw) return cloneDefaults();
     const saved = JSON.parse(raw);
-    const merged = { ...cloneDefaults(), ...saved };
-    // Merge statuses: defaults first, then custom saved values
-    const defStatuses = cloneDefaults().statuses;
-    if (saved.statuses) {
-      merged.statuses = defStatuses.map(def => {
-        const s = saved.statuses.find(x => x.id === def.id);
-        return s ? { ...def, ...s } : def;
-      });
-      // Append any custom (non-builtin) statuses
-      saved.statuses.filter(s => !s.builtIn).forEach(s => {
-        if (!merged.statuses.find(x => x.id === s.id)) merged.statuses.push({ ...s });
-      });
-    }
-    return merged;
+    return { ...cloneDefaults(), ...saved };
   } catch { return cloneDefaults(); }
 }
 
 function cloneDefaults() {
-  return {
-    ...DEFAULT_SETTINGS,
-    statuses: DEFAULT_SETTINGS.statuses.map(s => ({ ...s })),
-  };
+  return { ...DEFAULT_SETTINGS };
 }
 
 function saveSettings() {
@@ -75,7 +53,6 @@ let currentView        = 'library';
 let currentSettingsSec = 'appearance';
 let editingId          = null;
 let viewMode           = settings.defaultView;
-let statusFilter       = 'all';
 let selectedGenres     = [];
 let searchQuery        = '';
 let sortMode           = settings.defaultSort;
@@ -121,8 +98,6 @@ function applySettings() {
   // Initialise sort/view buttons
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sortMode));
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === viewMode));
-  renderStatusFilters();
-  renderStatusDropMenu();
 }
 
 function applyAccent(hex) {
@@ -148,52 +123,11 @@ function applyAnimationSetting(reduce) {
   settings.reduceAnimations = reduce;
 }
 
-// ── Status helpers ────────────────────────────────────
-function getStatusLabel(id) {
-  if (!id) return '';
-  const s = settings.statuses.find(x => x.id === id);
-  return s ? s.label : id;
-}
-function getStatusColor(id) {
-  if (!id) return 'var(--muted)';
-  const s = settings.statuses.find(x => x.id === id);
-  return s ? s.color : '#6868a0';
-}
+// ── Hex color helper ──────────────────────────────────
 function hexToRgba(hex, alpha) {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return `rgba(104,104,160,${alpha})`;
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function renderStatusFilters() {
-  const container = document.getElementById('status-filters');
-  if (!container) return;
-  const enabled = settings.statuses.filter(s => s.enabled);
-  container.innerHTML = `
-    <button class="sf-btn ${statusFilter==='all'?'active':''}" data-status="all">All</button>
-    <button class="sf-btn ${statusFilter==='favorite'?'active':''}" data-status="favorite">⭐ Favorites</button>
-    ${enabled.map(s => `<button class="sf-btn ${statusFilter===s.id?'active':''}" data-status="${s.id}" style="color:${s.color}">
-      <span class="sdm-dot" style="background:${s.color}"></span>${escHtml(s.label)}
-    </button>`).join('')}
-  `;
-}
-
-function renderStatusDropMenu() {
-  const menu = document.getElementById('status-drop-menu');
-  if (!menu) return;
-  const enabled = settings.statuses.filter(s => s.enabled);
-  menu.innerHTML = `
-    <div class="sdm-item" data-status="">
-      <span class="sdm-dot" style="background:var(--dim)"></span>
-      None
-    </div>
-    ${enabled.map(s => `
-      <div class="sdm-item" data-status="${s.id}">
-        <span class="sdm-dot" style="background:${s.color}"></span>
-        ${escHtml(s.label)}
-      </div>
-    `).join('')}
-  `;
 }
 
 // ── Titlebar ──────────────────────────────────────────
@@ -322,8 +256,6 @@ document.addEventListener('keydown', e => {
     document.getElementById('confirm-overlay').classList.remove('open');
     document.getElementById('scan-overlay').classList.remove('open');
     document.getElementById('cover-scan-overlay').classList.remove('open');
-    const sdm = document.getElementById('status-drop-menu');
-    if (sdm) sdm.classList.add('hidden');
   }
   if (lightbox.classList.contains('open')) {
     if (e.key === 'ArrowRight') lightboxNav(1);
@@ -408,16 +340,6 @@ document.getElementById('view-toggle').addEventListener('click', e => {
   renderGrid();
 });
 
-// ── Status filter ─────────────────────────────────────
-document.getElementById('status-filters').addEventListener('click', e => {
-  const btn = e.target.closest('.sf-btn');
-  if (!btn) return;
-  document.querySelectorAll('.sf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  statusFilter = btn.dataset.status;
-  renderGrid();
-});
-
 // ── Sort ──────────────────────────────────────────────
 document.getElementById('sort-btns').addEventListener('click', e => {
   const btn = e.target.closest('.sort-btn');
@@ -448,10 +370,6 @@ notesArea.addEventListener('input', () => {
     showToast('Note saved', 'success');
   }, 800);
 });
-
-// ── Screenshot button ─────────────────────────────────
-let lastScanResults = [];
-
 
 function displayScanResults(results) {
   const overlay = document.createElement('div');
@@ -716,36 +634,6 @@ document.getElementById('scan-add').addEventListener('click', async () => {
   showToast(`Added ${checks.length} game${checks.length!==1?'s':''}`, 'success');
 });
 
-// ── Status selector (detail view) ─────────────────────
-const statusSelectBtn = document.getElementById('status-select-btn');
-const statusDropMenu  = document.getElementById('status-drop-menu');
-
-statusSelectBtn.addEventListener('click', e => {
-  e.stopPropagation(); statusDropMenu.classList.toggle('hidden');
-});
-document.addEventListener('click', () => statusDropMenu.classList.add('hidden'));
-statusDropMenu.addEventListener('click', async e => {
-  e.stopPropagation();
-  const item = e.target.closest('.sdm-item');
-  if (!item || !currentDetailId) return;
-  const status = item.dataset.status || null;
-  games = await window.api.updateGame(currentDetailId, 'status', status);
-  statusDropMenu.classList.add('hidden');
-  const g = games.find(x => x.id === currentDetailId);
-  if (g) updateStatusBtn(g);
-  renderGrid(); renderSidebar();
-
-  // Force visual refresh by re-rendering detail view
-  const id = currentDetailId;
-  setTimeout(() => showDetail(id), 50);
-});
-
-function updateStatusBtn(game) {
-  const s = game.status;
-  const label = s ? getStatusLabel(s) : 'Set Status';
-  document.getElementById('status-select-label').textContent = label;
-  statusSelectBtn.className = 'status-select-btn' + (s ? ' has-status' : '');
-}
 
 // ── Favorite toggle ───────────────────────────────────
 document.getElementById('btn-favorite').addEventListener('click', async () => {
@@ -791,8 +679,7 @@ function primaryGenre(str) { const g=parseGenres(str); return g.length?g[0]:'Oth
 function applyFilters(list) {
   const q = gridSearch.value.trim().toLowerCase();
   let out = q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
-  if (statusFilter === 'favorite') out = out.filter(g => g.favorite);
-  else if (statusFilter !== 'all') out = out.filter(g => (g.status||null) === statusFilter);
+  if (selectedGenres.length) out = out.filter(g => selectedGenres.some(gen => (g.genre||'').includes(gen)));
   return out;
 }
 
@@ -851,7 +738,7 @@ function renderGrid() {
   const sorted = sortedGames(applyFilters(games), sortMode);
   const q      = gridSearch.value.trim().toLowerCase();
 
-  libCount.textContent = (q || statusFilter !== 'all')
+  libCount.textContent = q
     ? `${sorted.length} of ${games.length} game${games.length!==1?'s':''}`
     : `All Games (${games.length})`;
 
@@ -920,13 +807,6 @@ function makeCard(game) {
     ? parseGenres(game.genre).slice(0,2).map(g=>`<span class="card-genre-tag">${escHtml(g)}</span>`).join('')
     : '';
 
-  let statusBadge = '';
-  if (game.status) {
-    const col = getStatusColor(game.status);
-    const lbl = getStatusLabel(game.status);
-    statusBadge = `<div class="card-status" style="background:${hexToRgba(col,.18)};color:${col};border-color:${hexToRgba(col,.35)}">${escHtml(lbl)}</div>`;
-  }
-
   const timeHtml = settings.showPlaytime
     ? `<div class="card-time" data-id="${game.id}">${formatPlaytime(game.totalPlaytime||0)}</div>`
     : '';
@@ -936,7 +816,6 @@ function makeCard(game) {
   card.innerHTML = `
     ${coverHtml}
     <div class="card-play"><div class="card-play-icon">&#9654;</div></div>
-    ${statusBadge}
     <button class="${favClass}" title="Favorite">★</button>
     <div class="card-info">
       <div class="card-name">${escHtml(game.name)}</div>
@@ -980,13 +859,6 @@ function makeListItem(game) {
     ? `<div class="list-thumb"><img src="${src}" alt="" onerror="this.style.display='none'"></div>`
     : `<div class="list-thumb"><div class="list-thumb-ph">&#9654;</div></div>`;
 
-  let statusHtml = '';
-  if (game.status) {
-    const col = getStatusColor(game.status);
-    const lbl = getStatusLabel(game.status);
-    statusHtml = `<span class="card-status list-status-badge" style="background:${hexToRgba(col,.18)};color:${col};border-color:${hexToRgba(col,.35)}">${escHtml(lbl)}</span>`;
-  }
-
   const genre = primaryGenre(game.genre) !== 'Other' ? primaryGenre(game.genre) : (parseGenres(game.genre)[0]||'');
 
   const runDot = runningGames.has(game.id) ? `<div class="list-running-dot" title="Running"></div>` : '';
@@ -995,7 +867,6 @@ function makeListItem(game) {
     ${thumb}
     <span class="list-fav ${game.favorite?'on':''}">★</span>
     <div class="list-name">${escHtml(game.name)}</div>
-    ${statusHtml}
     <div class="list-genre">${escHtml(genre)}</div>
     <div class="list-time">${formatPlaytimeLong(game.totalPlaytime||0)}</div>
     <div class="list-last">${game.lastPlayed ? timeAgo(new Date(game.lastPlayed)) : '—'}</div>
@@ -1076,13 +947,11 @@ async function showDetail(id) {
   renderDetailTags(game);
   renderGoals(game);
   updatePlayBar(game);
-  updateStatusBtn(game);
   updateFavBtn(game);
   showRunningBadge(runningGames.has(id));
   renderActivity(game.sessions||[]);
   renderGameChart(game);
   notesArea.value = game.note || '';
-  loadScreenshots(id);
   renderSidebar();
 
   viewLibrary.classList.add('hidden');
@@ -1261,25 +1130,6 @@ function renderGameChart(game) {
   </svg>`;
 }
 
-async function loadScreenshots(id) {
-  const grid = document.getElementById('screenshots-grid');
-  grid.innerHTML = '';
-  const paths = await window.api.getScreenshots(id);
-  if (!paths.length) {
-    grid.innerHTML = '<div class="screenshots-empty">No screenshots yet.<br/>Press <strong>F12</strong> while in-game.</div>';
-    return;
-  }
-  lightboxPaths = paths;
-  paths.forEach((p, idx) => {
-    const wrap = document.createElement('div'); wrap.className='screenshot-thumb';
-    const img  = document.createElement('img');
-    img.src = 'file://'+p.replace(/\\/g,'/');
-    wrap.appendChild(img);
-    wrap.addEventListener('click', () => openLightbox(idx));
-    grid.appendChild(wrap);
-  });
-}
-
 // ── Lightbox ──────────────────────────────────────────
 function openLightbox(idx) {
   lightboxIndex = idx;
@@ -1351,10 +1201,6 @@ window.api.onSessionUpdate(({ id, sessions }) => {
   if (g) g.sessions = sessions;
   if (currentDetailId===id) { renderActivity(sessions); if(g) renderGameChart(g); }
 });
-window.api.onScreenshotTaken(({ gameId, path: p }) => {
-  showToast('Screenshot saved! (F12)', 'success');
-  if (currentDetailId===gameId) loadScreenshots(gameId);
-});
 window.api.onGameStarted(({ id }) => {
   runningGames.add(id);
   updateRunningIndicators(id);
@@ -1405,7 +1251,6 @@ function showCardPreview(game, rect) {
   const cpName   = document.getElementById('cp-name');
   const cpRating = document.getElementById('cp-rating');
   const cpTime   = document.getElementById('cp-time');
-  const cpStatus = document.getElementById('cp-status');
 
   if (game.imagePath) {
     cpCover.src = 'file://'+game.imagePath.replace(/\\/g,'/');
@@ -1416,11 +1261,6 @@ function showCardPreview(game, rect) {
   cpName.textContent   = game.name;
   cpRating.textContent = game.rating ? '★'.repeat(game.rating) + '☆'.repeat(5-game.rating) : '☆☆☆☆☆';
   cpTime.textContent   = formatPlaytimeLong(game.totalPlaytime||0);
-
-  const statusColor = getStatusColor(game.status);
-  const statusLabel = game.status ? getStatusLabel(game.status) : '';
-  cpStatus.textContent  = statusLabel;
-  cpStatus.style.color  = statusLabel ? statusColor : 'transparent';
 
   // Position: right of card if space, else left
   const pw = 220;
@@ -1493,12 +1333,7 @@ function renderStats() {
 
   renderPlaytimeChart();
   renderTopGames();
-  renderGenreChart();
   renderStatsRecent();
-  renderSessionFrequency();
-  renderStatusBreakdown();
-  renderAvgPlaytime();
-  renderMonthlyChart();
 }
 
 function renderPlaytimeChart() {
@@ -1550,33 +1385,6 @@ function renderTopGames() {
   </div>`).join('');
 }
 
-function renderGenreChart() {
-  const donutEl=document.getElementById('donut-svg'), legendEl=document.getElementById('genre-legend');
-  if(!donutEl) return;
-  const counts={};
-  games.forEach(g=>parseGenres(g.genre).forEach(gen=>{counts[gen]=(counts[gen]||0)+1;}));
-  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  const total=entries.reduce((s,[,c])=>s+c,0);
-  if(!total){donutEl.innerHTML='<div style="color:var(--muted);font-size:12px">No data</div>';legendEl.innerHTML='';return;}
-  const R=48,CX=60,CY=60,SW=20,C=2*Math.PI*R;
-  let off=0;
-  const slices=entries.map(([,count],i)=>{
-    const dash=(count/total)*C;
-    const s=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${CHART_COLORS[i%CHART_COLORS.length]}" stroke-width="${SW}"
-      stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})"/>`;
-    off+=dash; return s;
-  }).join('');
-  donutEl.innerHTML=`<svg viewBox="0 0 120 120" style="width:120px;height:120px;flex-shrink:0">
-    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg4)" stroke-width="${SW}"/>
-    ${slices}
-  </svg>`;
-  legendEl.innerHTML=entries.map(([genre,count],i)=>`<div class="legend-item">
-    <span class="legend-dot" style="background:${CHART_COLORS[i%CHART_COLORS.length]}"></span>
-    <span class="legend-genre">${escHtml(genre)}</span>
-    <span class="legend-pct">${Math.round(count/total*100)}%</span>
-  </div>`).join('');
-}
-
 function renderStatsRecent() {
   const el=document.getElementById('stats-recent-list'); if(!el) return;
   const recent=sortedGames(games,'recent').filter(g=>g.lastPlayed).slice(0,5);
@@ -1597,80 +1405,6 @@ function renderStatsRecent() {
   el.querySelectorAll('.stats-recent-item').forEach(item=>item.addEventListener('click',()=>showDetail(item.dataset.id)));
 }
 
-function renderSessionFrequency() {
-  const el=document.getElementById('session-frequency-wrap');
-  if(!el) return;
-  const today=new Date().toISOString().slice(0,10),sevenDaysAgo=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  const dayKeys=[],dayVals={};
-  for(let i=6;i>=0;i--){
-    const d=new Date(Date.now()-i*86400000),k=d.toISOString().slice(0,10);
-    dayKeys.push({key:k,label:d.toLocaleDateString([],{weekday:'short'})});
-    dayVals[k]=0;
-  }
-  games.forEach(g=>(g.sessions||[]).forEach(s=>{
-    const startDate=s.startedAt.slice(0,10);
-    if(dayVals.hasOwnProperty(startDate))dayVals[startDate]++;
-  }));
-  const maxVal=Math.max(...dayKeys.map(d=>dayVals[d.key]||0),1);
-  const W=200,H=100,P=8,CW=W-2*P,CH=H-2*P,barW=CW/dayKeys.length,barGap=3;
-  const bars=dayKeys.map((d,i)=>{
-    const val=dayVals[d.key]||0,barH=val>0?(CH/maxVal*val):0;
-    return `<rect x="${P+i*(barW-2)}" y="${P+CH-barH}" width="${barW-barGap}" height="${barH}" fill="#3b82f6" rx="2"/>`;
-  }).join('');
-  const labels=dayKeys.map((d,i)=>`<text x="${P+i*(barW-2)+barW/2-6}" y="${H-2}" font-size="10" fill="#9ca3af">${d.label[0]}</text>`).join('');
-  el.innerHTML=`<svg width="${W}" height="${H}" style="display:block;margin:0 auto">${bars}${labels}</svg>`;
-}
-
-function renderStatusBreakdown() {
-  const el=document.getElementById('status-breakdown-wrap'); if(!el) return;
-  const counts={all:0,playing:0,completed:0,backlog:0,dropped:0};
-  games.forEach(g=>{counts.all++;counts[g.status||'backlog']++;});
-  const statuses=[{id:'playing',color:'#22c55e'},{id:'completed',color:'#5b9cf6'},{id:'backlog',color:'#f59e0b'},{id:'dropped',color:'#ef4444'}];
-  const R=45,CX=60,CY=60,SW=18,C=2*Math.PI*R;
-  let off=0;
-  const slices=statuses.map(s=>{
-    const cnt=counts[s.id]||0;
-    const dash=cnt>0?(cnt/counts.all)*C:0;
-    const slice=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${s.color}" stroke-width="${SW}" stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})"/>`;
-    off+=dash; return slice;
-  }).join('');
-  el.innerHTML=`<div style="display:flex;gap:16px;align-items:center">
-    <svg viewBox="0 0 120 120" style="width:100px;height:100px;flex-shrink:0">
-      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg4)" stroke-width="${SW}"/>
-      ${slices}
-    </svg>
-    <div style="display:grid;gap:6px;font-size:12px">
-      ${statuses.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="display:block;width:8px;height:8px;background:${s.color};border-radius:2px"></span><span>${s.id.charAt(0).toUpperCase()+s.id.slice(1)}: <strong>${counts[s.id]||0}</strong></span></div>`).join('')}
-    </div>
-  </div>`;
-}
-
-function renderAvgPlaytime() {
-  const el=document.getElementById('avg-playtime-list'); if(!el) return;
-  const played=games.filter(g=>(g.sessions||[]).length>0).map(g=>({name:g.name,avg:(g.totalPlaytime||0)/(g.sessions||[]).length})).sort((a,b)=>b.avg-a.avg).slice(0,5);
-  if(!played.length){el.innerHTML='<div style="color:var(--muted);font-size:12px">No data</div>';return;}
-  el.innerHTML=played.map(g=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>${escHtml(g.name)}</span><span style="color:var(--accent)">${formatPlaytimeLong(Math.round(g.avg))}</span></div>`).join('');
-}
-
-function renderMonthlyChart() {
-  const el=document.getElementById('monthly-chart-wrap'); if(!el) return;
-  const now=Date.now(), months={}, monthLabels=[];
-  for(let i=5;i>=0;i--){const d=new Date(now-i*30*86400000);const m=d.toISOString().slice(0,7);months[m]=0;monthLabels.push({m,label:d.toLocaleDateString([],{month:'short'})});}
-  games.forEach(g=>(g.sessions||[]).forEach(s=>{const m=s.startedAt.slice(0,7);if(months[m]!==undefined)months[m]+=s.duration;}));
-  const vals=monthLabels.map(x=>months[x.m]/3600), maxV=Math.max(...vals,.5);
-  const W=520,H=120,PL=8,PR=8,PT=10,PB=20,cW=W-PL-PR,cH=H-PT-PB;
-  const barW=(cW-10)/monthLabels.length, barGap=10/monthLabels.length;
-  const bars=vals.map((v,i)=>{
-    const h=(v/maxV)*cH, x=PL+i*(barW+barGap), y=PT+cH-h;
-    return `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--accent)" rx="2" opacity="0.9"/>`;
-  }).join('');
-  const labels=monthLabels.map((x,i)=>{
-    const x_pos=PL+i*(barW+barGap)+barW/2;
-    return `<text x="${x_pos}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--dim)">${x.label}</text>`;
-  }).join('');
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${bars}${labels}</svg>`;
-}
-
 // ══ SETTINGS ═════════════════════════════════════════
 function renderSettingsSection(section) {
   currentSettingsSec = section;
@@ -1679,7 +1413,6 @@ function renderSettingsSection(section) {
   switch (section) {
     case 'appearance': content.innerHTML = buildAppearanceSection(); break;
     case 'library':    content.innerHTML = buildLibrarySection();    break;
-    case 'statuses':   content.innerHTML = buildStatusesSection();   break;
     case 'general':    content.innerHTML = buildGeneralSection();    break;
     case 'data':       content.innerHTML = buildDataSection();       break;
     case 'about':      content.innerHTML = buildAboutSection();      break;
@@ -1843,44 +1576,6 @@ function buildLibrarySection() {
   `;
 }
 
-function buildStatusesSection() {
-  return `
-    <div class="sc-header">
-      <div class="sc-title">Statuses</div>
-      <div class="sc-desc">Manage game statuses. Enable, rename, recolor, or add your own custom statuses.</div>
-    </div>
-
-    <div class="sg">
-      <div class="sg-title">Configured Statuses</div>
-      <div id="status-editor-list">
-        ${settings.statuses.map((s, i) => buildStatusEditorRow(s, i)).join('')}
-      </div>
-      <div class="add-status-row">
-        <input type="text" class="add-status-input" id="new-status-name" placeholder="New status name..." maxlength="24" />
-        <input type="color" id="new-status-color" value="#8b5cf6" style="width:34px;height:34px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:none;padding:2px" />
-        <button class="sec-btn" id="add-status-btn">+ Add</button>
-      </div>
-    </div>
-  `;
-}
-
-function buildStatusEditorRow(status, index) {
-  return `
-    <div class="status-row" data-index="${index}">
-      <input type="color" class="hidden-color-input status-color-hidden" data-index="${index}" value="${status.color}" id="sc-${index}" />
-      <button class="status-color-btn" data-index="${index}" style="background:${status.color}" title="Change color" onclick="document.getElementById('sc-${index}').click()"></button>
-      <input type="text" class="status-name-input" value="${escHtml(status.label)}" data-index="${index}" maxlength="24" />
-      <label class="toggle-wrap" title="${status.enabled?'Enabled':'Disabled'}">
-        <input type="checkbox" class="toggle-input status-enabled-cb" data-index="${index}" ${status.enabled?'checked':''} />
-        <div class="toggle-track"></div>
-      </label>
-      <button class="status-del-btn" data-index="${index}" title="Delete" ${status.builtIn?'disabled':''}>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-      </button>
-    </div>
-  `;
-}
-
 function buildGeneralSection() {
   return `
     <div class="sc-header">
@@ -1913,10 +1608,6 @@ function buildDataSection() {
       <div class="data-path-row">
         <div class="data-path-label">Library data</div>
         <div class="data-path-val">%APPDATA%\\Drader\\games.json</div>
-      </div>
-      <div class="data-path-row">
-        <div class="data-path-label">Screenshots</div>
-        <div class="data-path-val">%APPDATA%\\Drader\\screenshots\\</div>
       </div>
     </div>
 
@@ -2022,9 +1713,7 @@ function buildAboutSection() {
         <div style="display:grid;gap:8px">
           <div class="feature-tag">📊 Advanced Statistics</div>
           <div class="feature-tag">🎮 Game Library Management</div>
-          <div class="feature-tag">📸 Screenshot Capture</div>
           <div class="feature-tag">🔍 PC Game Discovery</div>
-          <div class="feature-tag">⚙️ Customizable Statuses</div>
           <div class="feature-tag">🎨 Dark Theme Optimized</div>
         </div>
       </div>
@@ -2110,88 +1799,6 @@ function bindSettingsSectionEvents(section) {
     // Steam import
     const steamBtn = document.getElementById('settings-steam-import-btn');
     if (steamBtn) steamBtn.addEventListener('click', triggerSteamImport);
-  }
-
-  if (section === 'statuses') {
-    // Color hidden inputs
-    content.querySelectorAll('.status-color-hidden').forEach(input => {
-      input.addEventListener('input', () => {
-        const idx = +input.dataset.index;
-        settings.statuses[idx].color = input.value;
-        saveSettings();
-        renderStatusFilters();
-        renderStatusDropMenu();
-        // Update the color button
-        const btn = content.querySelector(`.status-color-btn[data-index="${idx}"]`);
-        if (btn) btn.style.background = input.value;
-        renderGames();
-      });
-    });
-
-    // Name inputs
-    content.querySelectorAll('.status-name-input').forEach(input => {
-      input.addEventListener('input', () => {
-        const idx = +input.dataset.index;
-        settings.statuses[idx].label = input.value;
-        saveSettings();
-        renderStatusFilters();
-        renderStatusDropMenu();
-      });
-    });
-
-    // Enable toggles
-    content.querySelectorAll('.status-enabled-cb').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const idx = +cb.dataset.index;
-        settings.statuses[idx].enabled = cb.checked;
-        saveSettings();
-        renderStatusFilters();
-        renderStatusDropMenu();
-        // Reset statusFilter if it was using a now-disabled status
-        if (!settings.statuses.find(s=>s.id===statusFilter&&s.enabled) && statusFilter!=='all' && statusFilter!=='favorite') {
-          statusFilter = 'all';
-          document.querySelectorAll('.sf-btn').forEach(b => b.classList.toggle('active', b.dataset.status==='all'));
-        }
-        renderGames();
-      });
-    });
-
-    // Delete buttons
-    content.querySelectorAll('.status-del-btn:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = +btn.dataset.index;
-        const s = settings.statuses[idx];
-        if (!s || s.builtIn) return;
-        // Clear this status from any games that have it
-        settings.statuses.splice(idx, 1);
-        saveSettings();
-        renderStatusFilters();
-        renderStatusDropMenu();
-        renderSettingsSection('statuses');
-      });
-    });
-
-    // Add new status
-    const addBtn = document.getElementById('add-status-btn');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const nameInput  = document.getElementById('new-status-name');
-        const colorInput = document.getElementById('new-status-color');
-        const label = nameInput.value.trim();
-        if (!label) { nameInput.style.borderColor='var(--danger)'; return; }
-        const id = 'custom_' + Date.now();
-        settings.statuses.push({ id, label, color: colorInput.value, enabled: true, builtIn: false });
-        saveSettings();
-        renderStatusFilters();
-        renderStatusDropMenu();
-        renderSettingsSection('statuses');
-        showToast('Status added', 'success');
-      });
-
-      document.getElementById('new-status-name').addEventListener('keydown', e => {
-        if (e.key === 'Enter') addBtn.click();
-      });
-    }
   }
 
   if (section === 'data') {

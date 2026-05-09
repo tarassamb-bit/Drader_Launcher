@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, desktopCapturer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const { spawn } = require('child_process');
@@ -18,21 +18,6 @@ function writeGames(games) {
 let mainWin        = null;
 let lastLaunchedId = null;
 const runningGames = new Map(); // id → startTime
-
-// ── Screenshot capture ─────────────────────────────────
-async function captureScreen(gameId) {
-  try {
-    const primary = screen.getPrimaryDisplay();
-    const { width, height } = primary.size;
-    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width, height } });
-    if (!sources.length) return null;
-    const dir = path.join(app.getPath('userData'), 'screenshots', gameId);
-    fs.mkdirSync(dir, { recursive: true });
-    const filepath = path.join(dir, `shot_${Date.now()}.png`);
-    fs.writeFileSync(filepath, sources[0].thumbnail.toPNG());
-    return filepath;
-  } catch { return null; }
-}
 
 // ── Window ─────────────────────────────────────────────
 function createWindow() {
@@ -166,21 +151,6 @@ ipcMain.handle('save-note', (_, { id, note }) => {
   return true;
 });
 
-// ── Screenshots ────────────────────────────────────────
-ipcMain.handle('take-screenshot', async (_, gameId) => {
-  const filepath = await captureScreen(gameId);
-  return filepath ? { success: true, path: filepath } : { error: 'Capture failed' };
-});
-
-ipcMain.handle('get-screenshots', (_, id) => {
-  const dir = path.join(app.getPath('userData'), 'screenshots', id);
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
-    .filter(f => f.endsWith('.png') || f.endsWith('.jpg'))
-    .map(f => path.join(dir, f))
-    .sort((a, b) => b.localeCompare(a));
-});
-
 // ── Scan folder for games ──────────────────────────────
 const SKIP_WORDS = ['uninstall','setup','install','update','helper','crash','report','redist','vcredist','directx','dotnet','vc_redist'];
 
@@ -190,6 +160,22 @@ ipcMain.handle('scan-folder', async () => {
   const dir = r.filePaths[0];
   const results = [];
 
+  const isExecutable = (filePath, fileName) => {
+    if (process.platform === 'win32') {
+      return fileName.toLowerCase().endsWith('.exe');
+    } else if (process.platform === 'darwin') {
+      return fileName.toLowerCase().endsWith('.app');
+    } else {
+      // Linux - check if file has execute permissions
+      try {
+        const stats = fs.statSync(filePath);
+        return (stats.mode & parseInt('0111', 8)) !== 0;
+      } catch {
+        return false;
+      }
+    }
+  };
+
   function scan(d, depth) {
     if (depth > 3 || results.length >= 80) return;
     try {
@@ -198,10 +184,15 @@ ipcMain.handle('scan-folder', async () => {
         if (results.length >= 80) return;
         if (entry.isDirectory() && !entry.name.startsWith('.')) {
           scan(path.join(d, entry.name), depth + 1);
-        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.exe')) {
+        } else if (entry.isFile()) {
+          const fullPath = path.join(d, entry.name);
           const lower = entry.name.toLowerCase();
           if (SKIP_WORDS.some(w => lower.includes(w))) continue;
-          results.push({ name: path.basename(entry.name, '.exe'), path: path.join(d, entry.name) });
+          if (isExecutable(fullPath, entry.name)) {
+            const ext = path.extname(entry.name);
+            const baseName = process.platform === 'darwin' ? entry.name : path.basename(entry.name, ext);
+            results.push({ name: baseName, path: fullPath });
+          }
         }
       }
     } catch {}
@@ -247,6 +238,22 @@ ipcMain.handle('scan-system', async () => {
   const results = [];
   const checked = new Set();
 
+  const isExecutable = (filePath, fileName) => {
+    if (process.platform === 'win32') {
+      return fileName.toLowerCase().endsWith('.exe');
+    } else if (process.platform === 'darwin') {
+      return fileName.toLowerCase().endsWith('.app');
+    } else {
+      // Linux
+      try {
+        const stats = fs.statSync(filePath);
+        return (stats.mode & parseInt('0111', 8)) !== 0;
+      } catch {
+        return false;
+      }
+    }
+  };
+
   const scanDir = (dir, depth) => {
     if (depth > 2 || results.length >= 100) return;
     if (checked.has(dir.toLowerCase())) return;
@@ -259,27 +266,50 @@ ipcMain.handle('scan-system', async () => {
         if (entry.isDirectory() && !entry.name.startsWith('.')) {
           const fullPath = path.join(dir, entry.name);
           scanDir(fullPath, depth + 1);
-        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.exe')) {
+        } else if (entry.isFile()) {
+          const fullPath = path.join(dir, entry.name);
           const lower = entry.name.toLowerCase();
           if (SKIP_WORDS.some(w => lower.includes(w))) continue;
-          const fullPath = path.join(dir, entry.name);
-          const existing = results.find(r => r.path.toLowerCase() === fullPath.toLowerCase());
-          if (!existing) {
-            results.push({ name: path.basename(entry.name, '.exe'), path: fullPath });
+          if (isExecutable(fullPath, entry.name)) {
+            const existing = results.find(r => r.path.toLowerCase() === fullPath.toLowerCase());
+            if (!existing) {
+              const ext = path.extname(entry.name);
+              const baseName = process.platform === 'darwin' ? entry.name : path.basename(entry.name, ext);
+              results.push({ name: baseName, path: fullPath });
+            }
           }
         }
       }
     } catch {}
   };
 
-  const searchPaths = [
-    'C:\\Program Files',
-    'C:\\Program Files (x86)',
-    path.join(process.env.LOCALAPPDATA || '', 'Programs'),
-    'C:\\Games',
-    path.join(process.env.USERPROFILE || '', 'Games'),
-    path.join(process.env.USERPROFILE || '', 'AppData\\Local\\Epic Games'),
-  ].filter(p => fs.existsSync(p));
+  const searchPaths = (() => {
+    if (process.platform === 'win32') {
+      return [
+        'C:\\Program Files',
+        'C:\\Program Files (x86)',
+        path.join(process.env.LOCALAPPDATA || '', 'Programs'),
+        'C:\\Games',
+        path.join(process.env.USERPROFILE || '', 'Games'),
+        path.join(process.env.USERPROFILE || '', 'AppData\\Local\\Epic Games'),
+      ];
+    } else if (process.platform === 'darwin') {
+      return [
+        '/Applications',
+        path.join(process.env.HOME || '', 'Applications'),
+        path.join(process.env.HOME || '', 'Games'),
+      ];
+    } else {
+      // Linux
+      return [
+        '/usr/share/applications',
+        '/opt',
+        path.join(process.env.HOME || '', '.local/share/applications'),
+        path.join(process.env.HOME || '', 'Games'),
+        path.join(process.env.HOME || '', '.steam/steam/steamapps/common'),
+      ];
+    }
+  })().filter(p => fs.existsSync(p));
 
   for (const dir of searchPaths) {
     scanDir(dir, 0);
@@ -290,7 +320,16 @@ ipcMain.handle('scan-system', async () => {
 
 // ── File dialogs ───────────────────────────────────────
 ipcMain.handle('open-exe-dialog', async () => {
-  const r = await dialog.showOpenDialog({ title: 'Select game executable', filters: [{ name: 'Executables', extensions: ['exe'] }], properties: ['openFile'] });
+  let filters = [];
+  if (process.platform === 'win32') {
+    filters = [{ name: 'Executables', extensions: ['exe'] }];
+  } else if (process.platform === 'darwin') {
+    filters = [{ name: 'Applications', extensions: ['app'] }, { name: 'All Files', extensions: ['*'] }];
+  } else {
+    // Linux - allow all files since executable bit isn't in extension
+    filters = [{ name: 'All Files', extensions: ['*'] }];
+  }
+  const r = await dialog.showOpenDialog({ title: 'Select game executable', filters, properties: ['openFile'] });
   return r.canceled ? null : r.filePaths[0];
 });
 
@@ -321,12 +360,27 @@ function findMainExe(dir, depth) {
 }
 
 ipcMain.handle('import-steam', async () => {
-  const candidates = [
-    'C:\\Program Files (x86)\\Steam',
-    'C:\\Program Files\\Steam',
-    path.join(process.env.LOCALAPPDATA || '', 'Steam'),
-    path.join(process.env.PROGRAMFILES || '', 'Steam'),
-  ];
+  let candidates = [];
+
+  if (process.platform === 'win32') {
+    candidates = [
+      'C:\\Program Files (x86)\\Steam',
+      'C:\\Program Files\\Steam',
+      path.join(process.env.LOCALAPPDATA || '', 'Steam'),
+      path.join(process.env.PROGRAMFILES || '', 'Steam'),
+    ];
+  } else if (process.platform === 'darwin') {
+    candidates = [
+      path.join(process.env.HOME || '', 'Library/Application Support/Steam'),
+    ];
+  } else {
+    // Linux
+    candidates = [
+      path.join(process.env.HOME || '', '.steam/steam'),
+      path.join(process.env.HOME || '', '.local/share/Steam'),
+    ];
+  }
+
   let steamPath = candidates.find(p => fs.existsSync(p));
   if (!steamPath) return { error: 'Steam installation not found' };
 
@@ -374,14 +428,6 @@ ipcMain.handle('get-running-games', () => [...runningGames.keys()]);
 
 // ── App lifecycle ──────────────────────────────────────
 app.whenReady().then(() => {
-  globalShortcut.register('F12', async () => {
-    const id = lastLaunchedId;
-    if (!id) return;
-    const filepath = await captureScreen(id);
-    if (filepath && mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('screenshot-taken', { gameId: id, path: filepath });
-    }
-  });
   createWindow();
 });
 
