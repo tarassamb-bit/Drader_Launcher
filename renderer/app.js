@@ -90,6 +90,20 @@ const jumpRow       = document.getElementById('jump-row');
 const lightbox      = document.getElementById('lightbox');
 const lightboxImg   = document.getElementById('lightbox-img');
 
+// ── Lazy image loading (low-memory optimization) ──────
+const imgObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const img = entry.target;
+      if (img.dataset.src) {
+        img.src = img.dataset.src;
+        delete img.dataset.src;
+        imgObserver.unobserve(img);
+      }
+    }
+  });
+}, { rootMargin: '50px' });
+
 // ── Apply settings to UI ──────────────────────────────
 function applySettings() {
   applyAccent(settings.accentColor);
@@ -768,6 +782,7 @@ function renderGrid() {
   } else {
     sorted.forEach(g => gameGrid.appendChild(makeCard(g)));
   }
+  gameGrid.querySelectorAll('img[data-src]').forEach(img => imgObserver.observe(img));
 }
 
 function renderListView(sorted) {
@@ -793,6 +808,7 @@ function renderListView(sorted) {
     sorted.forEach(g => container.appendChild(makeListItem(g)));
   }
   gameGrid.parentElement.insertBefore(container, gameGrid.nextSibling);
+  container.querySelectorAll('img[data-src]').forEach(img => imgObserver.observe(img));
 }
 
 function makeCard(game) {
@@ -800,7 +816,7 @@ function makeCard(game) {
   card.className = 'game-card'; card.dataset.id = game.id;
   const src = game.imagePath ? 'file://'+game.imagePath.replace(/\\/g,'/') : '';
   const coverHtml = src
-    ? `<img class="card-cover" src="${src}" alt="${escHtml(game.name)}" onerror="this.outerHTML='<div class=\\'card-cover-ph\\'>&#9654;</div>'">`
+    ? `<img class="card-cover" data-src="${src}" alt="${escHtml(game.name)}" onerror="this.outerHTML='<div class=\\'card-cover-ph\\'>&#9654;</div>'">`
     : `<div class="card-cover-ph">&#9654;</div>`;
 
   const genreTagsHtml = settings.showGenreTags
@@ -856,7 +872,7 @@ function makeListItem(game) {
   li.className = 'list-item'; li.dataset.id = game.id;
   const src = game.imagePath ? 'file://'+game.imagePath.replace(/\\/g,'/') : '';
   const thumb = src
-    ? `<div class="list-thumb"><img src="${src}" alt="" onerror="this.style.display='none'"></div>`
+    ? `<div class="list-thumb"><img data-src="${src}" alt="" onerror="this.style.display='none'"></div>`
     : `<div class="list-thumb"><div class="list-thumb-ph">&#9654;</div></div>`;
 
   const genre = primaryGenre(game.genre) !== 'Other' ? primaryGenre(game.genre) : (parseGenres(game.genre)[0]||'');
