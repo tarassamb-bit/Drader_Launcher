@@ -5,10 +5,10 @@
 **A sleek, open-source game launcher built with Electron.**  
 Your personal gaming hub — like Steam, but yours.
 
-![Platform](https://img.shields.io/badge/platform-Windows-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)
 ![Electron](https://img.shields.io/badge/Electron-30-47848F?style=flat-square&logo=electron)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.0.0-orange?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.0.0-orange?style=flat-square)
 
 </div>
 
@@ -23,8 +23,7 @@ Your personal gaming hub — like Steam, but yours.
 - 📝 **Notes & Goals** — Write personal notes and set goals for each game.
 - 🏷️ **Tags & Genres** — Organize games with genres and custom tags.
 - ⭐ **Favorites & Ratings** — Star your favorites and rate your games.
-- 📊 **Stats View** — Visual charts of your gaming habits.
-- 📸 **Screenshots** — Press `F12` in-game to capture and store screenshots.
+- 📊 **Stats View** — Visual charts of your gaming habits with playtime tracking and top games.
 - 🔍 **Search & Filter** — Instantly search and filter by status, genre, or tag.
 - 🎨 **Themes & Accent Colors** — Customize the look with accent color presets.
 - 🔄 **Steam Import** — Auto-detect and import installed Steam games.
@@ -56,7 +55,7 @@ Your personal gaming hub — like Steam, but yours.
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- Windows 10/11
+- Windows 10/11, macOS 10.13+, or Linux (Ubuntu 18.04+)
 
 ### Install & Run
 
@@ -76,7 +75,7 @@ npm start
 
 ```bash
 npm run build
-# Output: dist/Drader Setup 1.0.0.exe
+# Output: dist/Drader Setup 2.0.0.exe (Windows)
 ```
 
 ---
@@ -95,14 +94,6 @@ Drader_Launcher/
 └── icons/
     └── icon.png         # App icon
 ```
-
----
-
-## ⌨️ Keyboard Shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `F12` | Take a screenshot of the current game |
 
 ---
 
