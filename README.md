@@ -115,7 +115,7 @@ Pull requests are welcome! Feel free to open an issue for bugs or feature reques
 
 ## 📄 License
 
-MIT — do whatever you want with it.
+MIT — do whatever you want with it. DO NOT COPY 
 
 ---
 
